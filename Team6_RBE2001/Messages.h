@@ -37,17 +37,25 @@ public:
 		kResumeMovement,
 		kRobotStatus,
 		kHeartbeat} MessageType;
-
+    
 	Messages();
 
 	bool isStopped();
+  int supplyAvailability();
+  int storageAvailability();
 	void sendHeartbeat();
+  void sendRadAlert(int);
 	bool read();
 	void setup();
 	void printMessage();
 
 private:
 	bool stopped;
+  int supply;
+  int storage;
+  int rod;
+  unsigned availabilityData=3;
+  
 };
 
 #endif /* MESSAGES_H_ */

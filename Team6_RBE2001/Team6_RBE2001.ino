@@ -1,12 +1,32 @@
+
 #include "Arduino.h"
 #include "Messages.h"
 #include <Servo.h>
+#include <QTRSensors.h>
 const int motorPin=11;
 Servo Motor;
 Messages msg;
 unsigned long timeForHeartbeat;
-unsigned long robotState;
+unsigned long timeForRadAlert;
 
+bool finished=false;
+bool stageFinished=false;
+int currentRod =0;
+int spentRod=1;
+// state machine variables 
+enum reactorStage {kGoingRod,kDepositingRod,kGettingNewRod,kDepositingNewRod} reactorStage;
+enum goingRodStage {} goingRodStage;
+enum depositingRodStage {} depositingRodStage;
+enum gettingNewRodStage {} gettingNewRodStage;
+enum depositingNewRodStage {} depositingNewRodStage;
+#define NUM_SENSORS             6  // number of sensors used
+#define TIMEOUT  4  // waits for 2500 microseconds for sensor outputs to go low
+#define EMITTER_PIN             2  // emitter is controlled by digital pin 2
+
+// sensors 0 through 7 are connected to digital pins 3 through 10, respectively
+QTRSensorsRC qtrrc((unsigned char[]) {3, 4, 5, 6, 7, 8, 9, 10},
+  NUM_SENSORS, TIMEOUT, EMITTER_PIN); 
+unsigned int sensorValues[NUM_SENSORS];
 /**
  * This "starter" program reads and debug-prints messages from the field. It also sends
  * heartbeat messages every second letting the field know that the robot is still running.
@@ -16,6 +36,71 @@ unsigned long robotState;
  * and .h files) into your new project.
  */
 
+void goingRod(){
+  switch goingRodStage{
+    case 1:
+      if(){
+        //lineTracker
+        }
+      else if(){
+        //stop drive motor
+        //armLower
+      }
+      else if (){
+        //stop arm motor 
+        //trackExtend
+      }
+      else if{
+        //gripClose
+      }
+      else {
+        goingRodStage=2; 
+      }
+      break;
+    case 2:
+      if(){
+        //trackRecline
+      }
+      else if(){
+        //armRaise 
+      } 
+      else{
+        goingRodStage=3;
+      }
+      break;
+    case 3:
+      if(){
+        //drive backward
+      }
+      else if(){
+        //turnLeft
+      }
+      else {
+        stageFinished=true;
+        goingRodStage=1;
+      }
+      break;
+  }
+} 
+
+void depositingRod(){
+  switch depositingRodStage{
+    case 1:
+  }
+}
+
+void gettingNewRod() {
+  gettingNewRod(){
+    
+  }
+}
+
+void depositingNewRod(){
+  depositingNewRod(){
+    
+  }
+}
+ 
 /**
  * Initialize the messages class and the debug serial port
  */
@@ -24,36 +109,74 @@ void setup() {
   Serial.println("Starting");
   msg.setup();
   timeForHeartbeat = millis() + 1000;
-  robotState = millis()+500;
+  timeForRadAlert=millis() + 1500;
+  
   Motor.attach(motorPin, 1000, 2000);
+  
 }
 
 /**
  * The loop method runs continuously, so call the Messages read method to check for input
- * on the bluetooth serial port and parse any complete messages. Then send the heartbeat if
- * it's time to do that.
- *
- * For the final project, one good way of implementing it is to use a state machine with high
- * level tasks as states. The state will tell what you should be doing each time the loop
- * function is called.
- *
- * Refer to the state machine lecture or look at the BTComms class for an example on how to
- * implement state machines.
+ * on the bluetooth serial port and parse any complete messages. 
  */
 void loop() {
-  if (msg.read()) {
-	  msg.printMessage();
+ if (msg.read()) {
+ msg.printMessage();}
+  // four bar code
+  if (msg.isStopped() || finished){     
+    //stop motors
   }
-  if (millis() > robotState) {
-     robotState = millis() + 500;
-  if (msg.isStopped()){     
-     Serial.println("Robot is stopped");
+  else{
+   switch (reactorStage){
+    case kGoingRod: 
+      if (!stageFinished){
+         goingRod();
+      }
+      else{ 
+        stageFinished=false;
+        reactorStage=kDepositingRod;
+   }
+    break;
+    case kDepositingRod: 
+            if (!stageFinished){
+         depositingRod();
+      }
+      else{ 
+        stageFinished=false;
+        reactorStage=kGettingNewRod;
+      }
+      break;
+    case kGettingNewRod: 
+           if (!stageFinished){
+         gettingNewRod();
+      }
+      else{ 
+        stageFinished=false;
+        reactorStage=kDepositingNewRod;
+      }
+      break;
+    case kDepositingNewRod: 
+            if (!stageFinished){
+         depositingNewRod();
+      }
+      else if(spentRod=1){ 
+        stageFinished=false;
+        spentRod=2;
+        reactorStage=kGoingRod;
+      }
+      else{
+        //code to stop all motors
+      }
+      break; 
+   }
   }
-    else{ 
-      Serial.println("Robot is running");
-  }}
+  if ((millis() > timeForRadAlert) && (currentRod > 0)){
+    msg.sendRadAlert(currentRod);
+    timeForRadAlert = millis() + 1500;
+    Serial.println("radiation alert");
+  }
   if (millis() > timeForHeartbeat) {
     timeForHeartbeat = millis() + 1000;
     msg.sendHeartbeat();
-  }
+    Serial.println("heartbeat");}
 }

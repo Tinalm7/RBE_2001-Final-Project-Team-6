@@ -40,7 +40,21 @@ void BTComms::setup() {
   Serial3.write(dest);
   Serial3.write(0xff - (opcode + source + dest + 5));
 }
-
+ /**
+  * Send a message to the RCS that has 4 values (opcode, source, dest, rod)
+  * This method sends messages via bluetooth to the field that have an opcode with
+  * a source, a destination address.. It is used for the radiataion alert that has
+  * rod data, determining if it has a spent or new rod.
+  */
+void BTComms::writeMessage(unsigned char opcode, unsigned char source, unsigned char dest, unsigned char rod) {
+  Serial3.write(kMessageStart);
+  Serial3.write(6);
+  Serial3.write(opcode);
+  Serial3.write(source);
+  Serial3.write(dest);
+  Serial3.write(rod);
+  Serial3.write(0xff - (opcode + source + dest + rod + 6));
+}
 /**
  * Get the length of the currently received message
  * @returns int The number of bytes in the received message
@@ -69,9 +83,7 @@ unsigned char BTComms::getMessageByte(unsigned index) {
 /**
  * Read a message from Bluetooth
  * This method reads messages from Bluetooth by looking for the message start byte, then
- * reading the message length and data.
- *
- * You should probably modify this to ignore messages with invalid checksums!
+ * reading the message length, checksum and destination verification and data.
  */
 bool BTComms::read() {
   while (Serial3.available()) {
@@ -80,18 +92,34 @@ bool BTComms::read() {
       case kLookingForStart:
         if (inByte != kMessageStart)
         	break;
-        BTstate = kReadingMessageLength;
+        BTstate = kMessageCheck;
         break;
-      case kReadingMessageLength:
+      case kMessageCheck:
         messageLength = inByte - 1;
         if (messageLength >= messageBufferLength) {
           Serial.println("Received message length greater than buffer size");
           BTstate = kLookingForStart;
           break;
         }
+        checkSum=(0xFF)-(message[(messageLength-1)])-(message[(messageLength-2)])-(message[(messageLength-3)])-(message[(messageLength-4)]);
+        destination=(message[(messageLength-1)]);
+        if(messageLength==6){
+          checkSum=checkSum-(message[(messageLength-5)]);
+          destination=(message[(messageLength-2)]);
+          }
+        if (((checkSum),HEX) != (message[messageLength],HEX)){
+          Serial.println("Invalid checksum");
+          BTstate = kLookingForStart;
+          break;
+          }
+        if(((destination,HEX) != (0,HEX)) && ((destination,HEX) != (6,HEX))){
+          Serial.println("invalid destination");
+          BTstate = kLookingForStart;
+          break;
+          }
         messageIndex = 0;
         BTstate = kReadMessage;
-        break;
+        break; 
       case kReadMessage:
         message[messageIndex++] = inByte;
         if (messageIndex >= messageLength) {
@@ -101,8 +129,7 @@ bool BTComms::read() {
         break;
        default:
         Serial.println("Invalid state");
-    }
-  }
+    }}
   return false;
 }
 

@@ -18,13 +18,18 @@ class BTComms {
     unsigned char getMessageByte(unsigned index);
     bool read();
     void writeMessage(unsigned char b1, unsigned char b2, unsigned char b3);
+    void writeMessage(unsigned char b1, unsigned char b2, unsigned char b3, unsigned char b4);
    private:
-    enum BTstate {kLookingForStart, kReadingMessageLength, kReadMessage} BTstate;
+    enum BTstate {kLookingForStart, kMessageCheck, kReadMessage} BTstate;
     unsigned messageLength;
-    static const int messageBufferLength = 20;
+    static const int messageBufferLength = 20; 
     unsigned char message[messageBufferLength];
     unsigned messageIndex;
+    int checkSum;
     unsigned char kMessageStart = 0x5f;
+    int currentBit; 
+    int destination;
+    
 };
 
 #endif
