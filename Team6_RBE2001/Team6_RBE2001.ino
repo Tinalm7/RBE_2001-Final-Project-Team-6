@@ -3,8 +3,18 @@
 #include "Messages.h"
 #include <Servo.h>
 #include <QTRSensors.h>
-const int motorPin=11;
-Servo Motor;
+
+int gripMotorPin=11;
+int trackMotorPin=10;
+int armMotorPin=9;
+int rightMotorPin=8;
+int leftMotorPin=7
+Servo leftMotor;
+Servo rightMotor;
+Servo armMotor;
+Servo trackMotor;
+Servo gripMotor;
+
 Messages msg;
 unsigned long timeForHeartbeat;
 unsigned long timeForRadAlert;
@@ -35,34 +45,64 @@ unsigned int sensorValues[NUM_SENSORS];
  * project. If you do that, be sure that you include the Messages and BTComms classes (.cpp
  * and .h files) into your new project.
  */
+//this function should follow a line
+void lineFollower(){
+  
+}
+//this function should turn left until sensors read a line
+void turnLeft(){
+  
+}
+//this function should turn right until sensors read a line
+void turnRight(){
+  
+}
+//raises arm to horizontal position
+void armRaise(){
+  
+}
+//lowers arm to vertical position
+void armLower(){
+  
+}
+//extend linear slide 
+void slideExtend(){
+}
+//recline linear slide
+void slideRecline(){
+}
+//close gripper to pick up rod
+void gripClose(){
+  gripMotor.write(131);
+  currentRod=SpentRod;
+  }
+//opens gripper to release rod
+void gripOpen(){
+  gripMotor.write(60);
+  currentRod=0;
+  }
 
 void goingRod(){
-  switch goingRodStage{
+  switch (goingRodStage){
     case 1:
       if(){
-        //lineTracker
+        lineFollower();
         }
       else if(){
         //stop drive motor
-        //armLower
+        armLower();
       }
-      else if (){
+      else
         //stop arm motor 
-        //trackExtend
-      }
-      else if{
-        //gripClose
-      }
-      else {
+        slideExtend();
+        gripClose();
         goingRodStage=2; 
       }
       break;
     case 2:
       if(){
-        //trackRecline
-      }
-      else if(){
-        //armRaise 
+        slideRecline();
+        armRaise(); 
       } 
       else{
         goingRodStage=3;
@@ -73,31 +113,172 @@ void goingRod(){
         //drive backward
       }
       else if(){
-        //turnLeft
+        turnLeft();
       }
       else {
         stageFinished=true;
         goingRodStage=1;
+        if(spentRod=1){
+          line=5;
+        }
+        if(spentRod=2){
+          line=0;
+        }
       }
       break;
   }
 } 
 
 void depositingRod(){
-  switch depositingRodStage{
+  switch (depositingRodStage){
     case 1:
+    if(){
+      lineFollower();
+    }
+    else { 
+      if(spentRod==2){
+        line++;      
+      }
+      else if(spentRod==1){
+        line--;
+      }
+    depositRodStage=2;
+    }
+    break;
+    case 2:
+      if(storageLineCheck(line)){
+        depositingRodStage=3;     
+      }
+    else{
+      //driveForward
+      depositingRodStage=1;
+    }
+    break;
+    case 3:
+      turnLeft();
+      break;
+    case 4:
+      if(){
+      lineFollower();
+      } 
+      else if(){
+        slideExtend();
+        }
+      else if(){
+        gripOpen();
+        }
+        else {
+          depositingRodStage=5;
+          )
+      break;
+    case 5;
+      if(){
+        //drive backwards
+      }
+      else if(){
+        turnLeft();
+      }
+      else {
+        depositingRodStage=1;
+        stageFinished=true;
+      }
+      break;
   }
 }
 
 void gettingNewRod() {
-  gettingNewRod(){
-    
+  switch (gettingNewRodStage){
+    case 1:
+    if(){
+      lineFollower(); 
+    }
+    else{
+      gettingNewRodStage=2;
+    }
+    break;
+    case 2: 
+    //supplyCheck
+    case 3: 
+    //turnleft 
+    //turnright
+    case 4:
+    if(){
+      lineFollower();
+    }
+    else if(){
+      trackExtend();
+    }
+    else if(){
+      gripClose();
+    }
+    else{
+  
+    }
+    case 5:
+    if(){
+      trackRecline(); 
+    }
+    else if(){
+      driveBackwards(); 
+    }
+    else if{
+      turnLeft(); 
+    }
+    else{
+      stageFinished=true;
+      gettingNewRodStage=1;
+    }
   }
 }
 
 void depositingNewRod(){
-  depositingNewRod(){
-    
+  switch (depositingNewRodStage){
+    case 1:
+    if(){
+      lineFollower();
+    }
+    else{
+      repositingNewRodStage=2;
+    }
+    break;
+    case 2: 
+    if(spentRod=1){
+      turnLeft();
+    }
+    else if(spentRod=2){
+      turnRight();
+    }
+    break;
+    case 3:
+    if(){
+      lineFollower(); 
+    }
+    else if(){
+    armLower;
+    }
+    else if(){
+      slideExtend();
+    }
+    else(){
+    gripOpen();
+    }
+    case 4:
+    if(){
+      trackRecline(); 
+    }
+    else if(){
+      armRaise();
+    }
+    case 5:
+    if(){
+    //driveBackwards
+    } 
+    else if(){turnLeft
+    }
+    else{
+      stageFinished=true;
+      depositingNewRodStage=1;
+    }
   }
 }
  
@@ -110,9 +291,12 @@ void setup() {
   msg.setup();
   timeForHeartbeat = millis() + 1000;
   timeForRadAlert=millis() + 1500;
-  
-  Motor.attach(motorPin, 1000, 2000);
-  
+
+  rightMotor.attach(rightMotorPin, 1000, 2000);
+  leftMotor.attach(leftMotorPin, 1000, 2000);
+  armMotor.attach(armMotorPin, 1000, 2000);
+  trackMotor.attach(trackMotorPin, 1000, 2000);
+  gripMotor.attach(gripMotorPin, 1000, 2000);
 }
 
 /**
@@ -122,7 +306,8 @@ void setup() {
 void loop() {
  if (msg.read()) {
  msg.printMessage();}
-  // four bar code
+
+  //sensor read code
   if (msg.isStopped() || finished){     
     //stop motors
   }
