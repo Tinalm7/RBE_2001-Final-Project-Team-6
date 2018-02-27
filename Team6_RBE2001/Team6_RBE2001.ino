@@ -4,52 +4,58 @@
 #include <Servo.h>
 #include <QTRSensors.h>
 
-int gripMotorPin=11;
-int slideMotorPin=10;
-int armMotorPin=9;
-int rightMotorPin=8;
-int leftMotorPin=7;
-int RadLED=6; 
-int stopped=false;
-
+//timers to be used in case machine
 unsigned long stepTimer1=0;
 unsigned long stepTimer2=0;
 unsigned long stepTimer3=0;
-//analog pins for each line sensor 
-int lineSensor1=0;
-int lineSensor2=1;
-int lineSensor3=2;
-int lineSensor4=3;
-int lineSensor5=4;
-int lineSensor6=5;
-int Button1=22;
-int Button2=22;
-int Button3=2;
-int line=4;
-int bitCalc;
-Servo leftMotor;
-Servo rightMotor;
-Servo armMotor;
-Servo slideMotor;
-Servo gripMotor;
-
+//digital pins for button, limit switches and LED, analog pin for pot
+int leftSwitch=22;
+int rightSwitch=23;
+int button=2;
+int RadLED=26;
+int armPotPin;
+//servo pins for motors
+int gripMotorPin=11;
+int slideMotorPin=10;
+int leftDriveBack=9;
+int leftDriveFor=8;
+int rightDriveBack=7;
+int rightDriveFor=6;
+int armMotorLower=5;
+int armMotorRaise=4;
+//mesage variable and timers for messages
 Messages msg;
 unsigned long timeForHeartbeat;
 unsigned long timeForRadAlert;
-
+//variables used in main program
 bool finished=false;
 bool stageFinished=false;
-int currentRod =0;
+int stopped=false;
+int currentRod=0;
 int spentRod=1;
-// state machine variables 
+int line=4;
+int bitCalc;
+//line follower proportion variables 
+int linekp=1;
+int linePos;
+//arm proportion variables 
+int currentValue;
+int error;
+int kp=1;
+int armRaisedValue;
+int armLoweredValue;
+//declares servo's
+Servo slideMotor;
+Servo gripMotor;
+// state machine variable 
 enum reactorStage {} reactorStage;
 #include <QTRSensors.h>
 #define NUM_SENSORS             6  // number of sensors used
 #define NUM_SAMPLES_PER_SENSOR  4  // average 4 analog samples per reading
 #define EMITTER_PIN             QTR_NO_EMITTER_PIN  // no emitter pin
 
-// sensors 0 through 5 are connected to analog inputs 0 through 5, respectively
-QTRSensorsAnalog qtra((unsigned char[]) {0, 1, 2, 3, 4, 5}, 
+// sensors 1 through 6 are connected to analog inputs 0 through 5, respectively
+QTRSensorsAnalog qtra((unsigned char[]) {0,1,2,3,4,5}, 
   NUM_SENSORS, NUM_SAMPLES_PER_SENSOR, EMITTER_PIN);
 unsigned int sensorValues[NUM_SENSORS];
 /**
@@ -60,7 +66,7 @@ unsigned int sensorValues[NUM_SENSORS];
  * project. If you do that, be sure that you include the Messages and BTComms classes (.cpp
  * and .h files) into your new project.
  */
-//this function should set three timers
+//this function sets three timers
 void setTimers(){
   stepTimer1=millis()+500;
   stepTimer2=millis()+1000;
@@ -101,34 +107,76 @@ bool supply(int currentLine){
     return false;
   }
 }
-//this function should follow a line
+//this function should have robot follow a line
 void lineFollowing(){
-
+  qtra.read(sensorValues);
+  linePos=sensorValues[3]-(sensorValues[4]+320);
+  analogWrite(leftDriveBack,0);
+  analogWrite(leftDriveFor,150-(linePos*linekp));
+  analogWrite(rightDriveBack,0);
+  analogWrite(rightDriveFor,150+(linePos*linekp));
 }
-//this function should turn left until sensors read a line
+//this function should have robot turn left
 void turnLeft(){
-  
+  qtra.read(sensorValues);
+  analogWrite(leftDriveBack,120);
+  analogWrite(leftDriveFor,0);
+  analogWrite(rightDriveBack,0);
+  analogWrite(rightDriveFor,120);
 }
-//this function should turn right until sensors read a line
+//this function should have robot turn right
 void turnRight(){
-  
+  qtra.read(sensorValues);
+  analogWrite(leftDriveBack,0);
+  analogWrite(leftDriveFor,120);
+  analogWrite(rightDriveBack,120);
+  analogWrite(rightDriveFor,0);
 }
+//this function has the robot drive backwards
 void backwards(){
-  
+  qtra.read(sensorValues);
+  linePos=sensorValues[3]-(sensorValues[4]+320);
+  analogWrite(leftDriveBack,150+(linePos*linekp));
+  analogWrite(leftDriveFor,0);
+  analogWrite(rightDriveBack,150-(linePos*linekp));
+  analogWrite(rightDriveFor,0);
 }
+//this function should stop the drive motors
 void driveStop(){
-  
+  analogWrite(leftDriveBack,0);
+  analogWrite(leftDriveFor,0);
+  analogWrite(rightDriveBack,0);
+  analogWrite(rightDriveFor,0);
 }
-//raises arm to horizontal position
+//raises arm to horizontal position using PID
 void armRaise(){
-  
+  currentValue=analogRead(armPotPin);
+  error=armRaisedValue-currentValue;
+  if(error>0){
+  analogWrite(armMotorRaise, (error*kp));
+  analogWrite(armMotorLower, 0);
+  }
+  else if(error<0){
+  analogWrite(armMotorLower, (error*kp*-1));
+  analogWrite(armMotorRaise, 0);
+  }
 }
-//lowers arm to vertical position
+//lowers arm to vertical position using PID
 void armLower(){
-  
+  currentValue=analogRead(armPotPin);
+  error=armLoweredValue-currentValue;
+  if(error>0){
+  analogWrite(armMotorRaise, (error*kp));
+  analogWrite(armMotorLower, 0);
+  }
+  else if(error<0){
+  analogWrite(armMotorLower, (error*kp*-1));
+  analogWrite(armMotorRaise, 0);
+  }
 }
 void armStop(){
-  
+  analogWrite(armMotorRaise, 0);
+  analogWrite(armMotorLower, 0);
 }
 //extend linear slide 
 void slideExtend(){
@@ -154,22 +202,22 @@ void gripOpen(){
  * Initialize the messages class and the debug serial port
  */
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Starting");
-  msg.setup();
-  timeForHeartbeat = millis() + 1000;
-  timeForRadAlert=millis() + 1500;
-
-  rightMotor.attach(rightMotorPin, 1000, 2000);
-  leftMotor.attach(leftMotorPin, 1000, 2000);
-  armMotor.attach(armMotorPin, 1000, 2000);
+  Serial.begin(9600);
+  Serial.println("start");
+  pinMode(leftDriveBack, OUTPUT);
+  pinMode(leftDriveFor, OUTPUT);
+  pinMode(rightDriveBack, OUTPUT);
+  pinMode(rightDriveFor, OUTPUT);
+  pinMode(armMotorLower, OUTPUT);
+  pinMode(armMotorRaise, OUTPUT);
   slideMotor.attach(slideMotorPin, 1000, 2000);
   gripMotor.attach(gripMotorPin, 1000, 2000);
   pinMode(RadLED, OUTPUT);
-  pinMode(Button1, INPUT);
-  pinMode(Button2, INPUT);
-  pinMode(Button3, INPUT);
-  attachInterrupt(0, buttonPress, FALLING);
+  pinMode(armPotPin, INPUT);
+  pinMode(button, INPUT);
+  pinMode(leftSwitch, INPUT);
+  pinMode(rightSwitch, INPUT);
+  attachInterrupt(digitalPinToInterrupt(button), buttonPress, FALLING);
 }
 
 /**
@@ -180,7 +228,7 @@ void loop() {
  if (msg.read()) {
  msg.printMessage();}
 
-  //sensor read code
+  //checks to see if robot should be stopped
   if (msg.isStopped()||finished||stopped){     
     driveStop();
     armStop();
@@ -189,7 +237,7 @@ void loop() {
    //state machine code 
    switch (reactorStage){
      case 1:
-       if(digitalRead(Button1)||digitalRead(Button2)){
+       if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
          lineFollowing();
          armLower();
        }
@@ -198,7 +246,6 @@ void loop() {
          gripOpen();
          reactorStage=2; 
          setTimers();
-         qtra.read(sensorValues); 
        }
        break;
      case 2:
@@ -221,15 +268,13 @@ void loop() {
          armRaise();
          backwards();
        }
-       else if((stepTimer3>millis())||(sensorValues[4]>500)||(sensorValues[3]>500)){
+       else if((stepTimer3>millis())||(sensorValues[4]<500)||(sensorValues[3]<200)){
          armStop();
          turnRight();
-         qtra.read(sensorValues);
        }
        else{
          driveStop();
          reactorStage=4;
-         qtra.read(sensorValues);
          setTimers();
          if(spentRod==1){
           line=4;
@@ -240,9 +285,8 @@ void loop() {
        }
        break;
      case 4:
-       if((sensorValues[6]>500)||(sensorValues[1]>500)){
+       if((sensorValues[6]<500)||(sensorValues[1]<500)){
         lineFollowing();
-        qtra.read(sensorValues);
        }
        else{
         reactorStage=5;
@@ -252,7 +296,6 @@ void loop() {
      case 5:
        if(storage(line)){
         reactorStage=6;
-        qtra.read(sensorValues);
         setTimers();
        }
        else if((stepTimer1-250)>millis()){
@@ -269,16 +312,15 @@ void loop() {
        }
        break;
      case 6:
-      if((stepTimer1>millis)||(sensorValues[4]>500)||(sensorValues[3]>500)){
+      if((stepTimer1>millis)||(sensorValues[4]<500)||(sensorValues[3]<500)){
         if(spentRod==1){
         turnLeft();
         }
         else if(spentRod==2){
           turnRight();
         }
-        qtra.read(sensorValues);
       }
-      else if(digitalRead(Button1)||digitalRead(Button2)){
+      else if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
          lineFollowing; 
        }
       else{
@@ -299,27 +341,23 @@ void loop() {
        }
        else{
         reactorStage=8;
-        qtra.read(sensorValues);
        }
        break;
        case 8:
          if(stepTimer2>millis()){
                 backwards();
          }
-       else if((stepTimer3>millis())||(sensorValues[4]>500)||(sensorValues[3]>500)){
+       else if((stepTimer3>millis())||(sensorValues[4]<500)||(sensorValues[3]<500)){
          turnRight();
-           qtra.read(sensorValues);
          }
        else{
         driveStop();
         reactorStage=9;
-        qtra.read(sensorValues);
        }
        break;
     case 9: 
-      if((sensorValues[6]>500)||(sensorValues[1]>500)){
+      if((sensorValues[6]<500)||(sensorValues[1]<500)){
         lineFollowing();
-        qtra.read(sensorValues);
       }
       else{
         driveStop();
@@ -332,9 +370,8 @@ void loop() {
         reactorStage=15;
       }
       else if(supply(line-1)||supply(line-2)||supply(line-3)){
-         if((stepTimer1>millis())||(sensorValues[4]>500)||(sensorValues[3]>500)){
+         if((stepTimer1>millis())||(sensorValues[4]<500)||(sensorValues[3]<500)){
           turnRight();
-          qtra.read(sensorValues);
          }
          else{
           reactorStage=11;
@@ -342,9 +379,8 @@ void loop() {
          }
       }
       else if(supply(line+1)||supply(line+2)||supply(line+3)){
-       if((stepTimer1>millis())||(sensorValues[4]>500)||(sensorValues[3]>500)){
+       if((stepTimer1>millis())||(sensorValues[4]<500)||(sensorValues[3]<500)){
         turnLeft();
-        qtra.read(sensorValues);
        }
        else{
         reactorStage=13;
@@ -353,9 +389,8 @@ void loop() {
      }
      break;
     case 11:
-      if(stepTimer1>millis()||(sensorValues[6]>500)||(sensorValues[1]>500)){
+      if(stepTimer1>millis()||(sensorValues[6]<500)||(sensorValues[1]<500)){
         lineFollowing();
-        qtra.read(sensorValues);
       }
       else if(supply(line)){
         reactorStage=12;
@@ -367,18 +402,16 @@ void loop() {
       }
       break;
     case 12:
-      if(stepTimer1>millis()||(sensorValues[4]>500)||(sensorValues[3]>500)){
+      if(stepTimer1>millis()||(sensorValues[4]<500)||(sensorValues[3]<500)){
         turnLeft();
-        qtra.read(sensorValues);
       }
       else{
       reactorStage=15;
       }
       break;
     case 13:
-   if(stepTimer1>millis()||(sensorValues[6]>500)||(sensorValues[1]>500)){
+   if(stepTimer1>millis()||(sensorValues[6]<500)||(sensorValues[1]<500)){
         lineFollowing();
-        qtra.read(sensorValues);
       }
       else if(supply(line)){
         reactorStage=14;
@@ -390,16 +423,15 @@ void loop() {
       }
       break;
     case 14:
-      if(stepTimer1>millis()||(sensorValues[4]>500)||(sensorValues[3]>500)){
+      if(stepTimer1>millis()||(sensorValues[4]<500)||(sensorValues[3]<500)){
         turnRight();
-        qtra.read(sensorValues);
       }
       else{
       reactorStage=15;
       }
       break;
     case 15:
-      if(digitalRead(Button1)||digitalRead(Button2)){
+      if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
         lineFollowing();
       }
       else{
@@ -426,9 +458,8 @@ void loop() {
        if(stepTimer2>millis()){
                 backwards();
          }
-       else if((stepTimer3>millis())||(sensorValues[4]>500)||(sensorValues[3]>500)){
+       else if((stepTimer3>millis())||(sensorValues[4]<500)||(sensorValues[3]<500)){
          turnRight();
-           qtra.read(sensorValues);
          }
        else{
         driveStop();
@@ -436,9 +467,8 @@ void loop() {
        }
        break;
      case 18:
-       if((sensorValues[6]>500)||(sensorValues[1]>500)){
+       if((sensorValues[6]<500)||(sensorValues[1]<500)){
         lineFollowing();
-        qtra.read(sensorValues);
        }
        else if(spentRod==1){
         reactorStage=19;
@@ -450,22 +480,20 @@ void loop() {
        }
       break;
     case 19:
-      if(stepTimer1>millis()||(sensorValues[4]>500)||(sensorValues[3]>500)){
+      if(stepTimer1>millis()||(sensorValues[4]<500)||(sensorValues[3]<500)){
         turnLeft();
-        qtra.read(sensorValues);
       }
       else{
         reactorStage=21;
       }
       break;
     case 20:
-    if(stepTimer1>millis()||(sensorValues[4]>500)||(sensorValues[3]>500)){
+    if(stepTimer1>millis()||(sensorValues[4]<500)||(sensorValues[3]<500)){
         turnRight();
-        qtra.read(sensorValues);
       }
       break;
     case 21:
-      if(digitalRead(Button1)||digitalRead(Button2)){
+      if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
          lineFollowing();
          armLower();
        }
@@ -473,7 +501,6 @@ void loop() {
          driveStop();
          reactorStage=22; 
          setTimers();
-         qtra.read(sensorValues); 
        }
        break;
      case 22:
@@ -495,10 +522,9 @@ void loop() {
          armRaise();
          backwards();
        }
-       else if((stepTimer3>millis())||(sensorValues[4]>500)||(sensorValues[3]>500)){
+       else if((stepTimer3>millis())||(sensorValues[4]<500)||(sensorValues[3]<500)){
          armStop();
          turnRight();
-         qtra.read(sensorValues);
        }
        else if(spentRod==1){
          driveStop();
@@ -512,17 +538,19 @@ void loop() {
        break;
      }  
   }
+  //generates radiation alert message every 1.5 sec
   if ((millis() > timeForRadAlert) && (currentRod > 0)){
     msg.sendRadAlert(currentRod);
     timeForRadAlert = millis() + 1500;
     Serial.println("radiation alert");
   }
+  //generates heartbeat message every second
   if (millis() > timeForHeartbeat) {
     timeForHeartbeat = millis() + 1000;
     msg.sendHeartbeat();
     Serial.println("heartbeat");}
 } 
 void buttonPress() {
-stopped=!stopped;
+//stopped=!stopped;
 }
 
