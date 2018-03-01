@@ -9,8 +9,7 @@ unsigned long stepTimer1=0;
 unsigned long stepTimer2=0;
 unsigned long stepTimer3=0;
 //digital pins for button, limit switches and LED, analog pin for pot
-int leftSwitch=22;
-int rightSwitch=23;
+int allignSwitch=22;
 int button=2;
 int RadLED=26;
 int armPotPin;
@@ -215,8 +214,7 @@ void setup() {
   pinMode(RadLED, OUTPUT);
   pinMode(armPotPin, INPUT);
   pinMode(button, INPUT);
-  pinMode(leftSwitch, INPUT);
-  pinMode(rightSwitch, INPUT);
+  pinMode(allignSwitch, INPUT);
   attachInterrupt(digitalPinToInterrupt(button), buttonPress, FALLING);
 }
 
@@ -234,10 +232,10 @@ void loop() {
     armStop();
   }
   else{ 
-   //state machine code 
+   //state machine code the first three cases have the robot navigate and pickup a spent rod and then face the opposite direction.
    switch (reactorStage){
      case 1:
-       if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
+       if(!digitalRead(allignSwitch)){
          lineFollowing();
          armLower();
        }
@@ -269,7 +267,6 @@ void loop() {
          backwards();
        }
        else if((stepTimer3>millis())||(sensorValues[4]<500)||(sensorValues[3]<200)){
-         armStop();
          turnRight();
        }
        else{
@@ -284,8 +281,9 @@ void loop() {
          }
        }
        break;
+       //cases 4-7 have the robot navigate to and empty deposit holder and deposit the rod.
      case 4:
-       if((sensorValues[6]<500)||(sensorValues[1]<500)){
+       if((sensorValues[5]<500)||(sensorValues[1]<500)){
         lineFollowing();
        }
        else{
@@ -320,7 +318,7 @@ void loop() {
           turnRight();
         }
       }
-      else if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
+      else if(!digitalRead(allignSwitch)){
          lineFollowing; 
        }
       else{
@@ -335,6 +333,7 @@ void loop() {
        }  
        else if(stepTimer2>millis()){
          gripOpen();
+         currentRod=0;
         }
        else if(stepTimer3>millis()){
         slideRecline();
@@ -343,6 +342,7 @@ void loop() {
         reactorStage=8;
        }
        break;
+       //cases 8-17 have the robot navigate to the new fuel and pickup a new rod
        case 8:
          if(stepTimer2>millis()){
                 backwards();
@@ -356,7 +356,7 @@ void loop() {
        }
        break;
     case 9: 
-      if((sensorValues[6]<500)||(sensorValues[1]<500)){
+      if((sensorValues[5]<500)||(sensorValues[1]<500)){
         lineFollowing();
       }
       else{
@@ -389,7 +389,7 @@ void loop() {
      }
      break;
     case 11:
-      if(stepTimer1>millis()||(sensorValues[6]<500)||(sensorValues[1]<500)){
+      if(stepTimer1>millis()||(sensorValues[5]<500)||(sensorValues[1]<500)){
         lineFollowing();
       }
       else if(supply(line)){
@@ -410,7 +410,7 @@ void loop() {
       }
       break;
     case 13:
-   if(stepTimer1>millis()||(sensorValues[6]<500)||(sensorValues[1]<500)){
+   if(stepTimer1>millis()||(sensorValues[5]<500)||(sensorValues[1]<500)){
         lineFollowing();
       }
       else if(supply(line)){
@@ -431,7 +431,7 @@ void loop() {
       }
       break;
     case 15:
-      if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
+      if(!digitalRead(allignSwitch)){
         lineFollowing();
       }
       else{
@@ -466,8 +466,9 @@ void loop() {
         reactorStage=18;
        }
        break;
+       //case 18-24 have the robot navigate to the empty holder and deposit the new rod
      case 18:
-       if((sensorValues[6]<500)||(sensorValues[1]<500)){
+       if((sensorValues[5]<500)||(sensorValues[1]<500)){
         lineFollowing();
        }
        else if(spentRod==1){
@@ -493,7 +494,7 @@ void loop() {
       }
       break;
     case 21:
-      if(!digitalRead(leftSwitch)||!digitalRead(rightSwitch)){
+      if(!digitalRead(allignSwitch)){
          lineFollowing();
          armLower();
        }
