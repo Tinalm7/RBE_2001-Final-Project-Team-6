@@ -13,12 +13,12 @@ int slideEnc2=20;
 //servo pins for motors
 int gripMotorPin=5;
 int slideMotorPin=4;
-int rightDriveBack=9;
-int rightDriveFor=8;
-int leftDriveBack=6;
-int leftDriveFor=7;
-int armMotorLower=10;
-int armMotorRaise=11;
+int rightDriveBackPin=9;
+int rightDriveForPin=8;
+int leftDriveBackPin=6;
+int leftDriveForPin=7;
+int armMotorLowerPin=10;
+int armMotorRaisePin=11;
 bool finished=false;
 bool stageFinished=false;
 int stopped=false;
@@ -33,8 +33,8 @@ int linePos;
 //timers for 4Bar & bool for 4bar
 bool timerSet;
 bool raiseArm;
-int slideExtVal=9;
-int slideRecVal=9;
+int slideExtVal=-160;
+int slideRecVal=0;
 long fourBarTimer1;
 long fourBarTimer2;
 //declares servo's
@@ -60,42 +60,42 @@ void setTimers(){
 void lineFollowing(){
   qtra.read(sensorValues);
   linePos=sensorValues[3]-(sensorValues[4]+comp);
-  analogWrite(leftDriveBack,0);
-  analogWrite(leftDriveFor,150-(linePos*linekp));
-  analogWrite(rightDriveBack,0);
-  analogWrite(rightDriveFor,150+(linePos*linekp));
+  analogWrite(leftDriveBackPin,0);
+  analogWrite(leftDriveForPin,150-(linePos*linekp));
+  analogWrite(rightDriveBackPin,0);
+  analogWrite(rightDriveForPin,150+(linePos*linekp));
 }
 //this function should have robot turn left
 void turnLeft(){
   qtra.read(sensorValues);
-  analogWrite(leftDriveBack,120);
-  analogWrite(leftDriveFor,0);
-  analogWrite(rightDriveBack,0);
-  analogWrite(rightDriveFor,120);
+  analogWrite(leftDriveBackPin,120);
+  analogWrite(leftDriveForPin,0);
+  analogWrite(rightDriveBackPin,0);
+  analogWrite(rightDriveForPin,120);
 }
 //this function should have robot turn right
 void turnRight(){
   qtra.read(sensorValues);
-  analogWrite(leftDriveBack,0);
-  analogWrite(leftDriveFor,100);
-  analogWrite(rightDriveBack,60);
-  analogWrite(rightDriveFor,0);
+  analogWrite(leftDriveBackPin,0);
+  analogWrite(leftDriveForPin,100);
+  analogWrite(rightDriveBackPin,60);
+  analogWrite(rightDriveForPin,0);
 }
 //this function has the robot drive backwards
 void backwards(){
   qtra.read(sensorValues);
   linePos=sensorValues[3]-(sensorValues[4]+comp);
-  analogWrite(leftDriveBack,120+(linePos*linekp));
-  analogWrite(leftDriveFor,0);
-  analogWrite(rightDriveBack,120-(linePos*linekp));
-  analogWrite(rightDriveFor,0);
+  analogWrite(leftDriveBackPin,120+(linePos*linekp));
+  analogWrite(leftDriveForPin,0);
+  analogWrite(rightDriveBackPin,120-(linePos*linekp));
+  analogWrite(rightDriveForPin,0);
 }
 //this function should stop the drive motors
 void driveStop(){
-  analogWrite(leftDriveBack,0);
-  analogWrite(leftDriveFor,0);
-  analogWrite(rightDriveBack,0);
-  analogWrite(rightDriveFor,0);
+  analogWrite(leftDriveBackPin,0);
+  analogWrite(leftDriveForPin,0);
+  analogWrite(rightDriveBackPin,0);
+  analogWrite(rightDriveForPin,0);
 }
 void set4BarTimers(){
  fourBarTimer1=millis()+1000;
@@ -104,34 +104,35 @@ void set4BarTimers(){
 //raises arm to horizontal position using PID
 void armRaise(){
   if(digitalRead(armPotPin)>140){
-  analogWrite(armMotorRaise, 150);
-  analogWrite(armMotorLower, 0);
+  analogWrite(armMotorRaisePin, 150);
+  analogWrite(armMotorLowerPin, 0);
   }
   else{
-  analogWrite(armMotorRaise, 0);
-  analogWrite(armMotorLower, 0);  
+  analogWrite(armMotorRaisePin, 0);
+  analogWrite(armMotorLowerPin, 0);  
   }
 }
 //lowers arm to vertical position using PID
 void armLower(){
   if(210>digitalRead(armPotPin)){
-  analogWrite(armMotorRaise, 0);
-  analogWrite(armMotorLower, 150);
+  analogWrite(armMotorRaisePin, 0);
+  analogWrite(armMotorLowerPin, 150);
   }
   else{
-  analogWrite(armMotorRaise, 0);
-  analogWrite(armMotorLower, 0); 
+  analogWrite(armMotorRaisePin, 0);
+  analogWrite(armMotorLowerPin, 0); 
   }
 }
 //stops arm motor
 void armStop(){
-  analogWrite(armMotorRaise, 0);
-  analogWrite(armMotorLower, 0);
+  analogWrite(armMotorRaisePin, 0);
+  analogWrite(armMotorLowerPin, 0);
+  slideMotor.write(90);
 }
 //extend linear slide 
 void slideExtend(){
   if(slideEnc.read()>slideExtVal){
-  slideMotor.write(110);
+  slideMotor.write(105);
   }
   else{
     slideMotor.write(90);
@@ -140,7 +141,7 @@ void slideExtend(){
 //recline linear slide
 void slideRecline(){
   if(slideEnc.read()<slideRecVal){
-  slideMotor.write(70);
+  slideMotor.write(64);
   }
   else{
     slideMotor.write(90);
@@ -161,19 +162,20 @@ void setup(){
   // put your setup code here, to run once:
   Serial.begin(9600);
   Serial.println("start");
-  pinMode(leftDriveBack, OUTPUT);
-  pinMode(leftDriveFor, OUTPUT);
-  pinMode(rightDriveBack, OUTPUT);
-  pinMode(rightDriveFor, OUTPUT);
-  pinMode(armMotorLower, OUTPUT);
-  pinMode(armMotorRaise, OUTPUT);
+  pinMode(leftDriveBackPin, OUTPUT);
+  pinMode(leftDriveForPin, OUTPUT);
+  pinMode(rightDriveBackPin, OUTPUT);
+  pinMode(rightDriveForPin, OUTPUT);
+  pinMode(armMotorLowerPin, OUTPUT);
+  pinMode(armMotorRaisePin, OUTPUT);
   slideMotor.attach(slideMotorPin, 1000, 2000);
   gripMotor.attach(gripMotorPin, 1000, 2000);
   pinMode(RadLED, OUTPUT);
   pinMode(armPotPin, INPUT);
   pinMode(button, INPUT);
   pinMode(allignSwitch, INPUT);
-  attachInterrupt(digitalPinToInterrupt(button), buttonPress, FALLING);
+  pinMode(29,INPUT);
+  attachInterrupt(digitalPinToInterrupt(button), buttonPress, RISING);
   qtra.read(sensorValues);
   comp=sensorValues[3]-sensorValues[4];
   setTimers();
@@ -214,8 +216,21 @@ qtra.read(sensorValues);
 //  stopped=true;
 //}
 armStop();
+if(digitalRead(29)==1){
+armStop();
 slideMotor.write(90);
+setTimers();
+//while(millis()<stepTimer3){
+//slideExtend();
+//}
+//setTimers();
+//while(millis()<stepTimer3){
+//slideRecline(); 
+//}
+//delay(10000);
+//slideMotor.write(65);
 Serial.println(slideEnc.read());
+}
 //Serial.print(sensorValues[1]);
 //Serial.print(":");
 //Serial.print(sensorValues[2]);
@@ -229,7 +244,12 @@ Serial.println(slideEnc.read());
 //Serial.println(sensorValues[6]);
 }
 void buttonPress(){
-//stopped=!stopped;
+//if(stopped==1){
+//  stopped=0;
+//}
+//else{
+//stopped=1;
+//}
 //Serial.println("pressed");
 }
 
