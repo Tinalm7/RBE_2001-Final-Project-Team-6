@@ -1,4 +1,5 @@
 #include <Servo.h>
+#include <Encoder.h>
 unsigned long stepTimer1=0;
 unsigned long stepTimer2=0;
 unsigned long stepTimer3=0;
@@ -7,6 +8,8 @@ int allignSwitch=22;
 int button=2;
 int RadLED=26;
 int armPotPin=11;
+int slideEnc1=19;
+int slideEnc2=20;
 //servo pins for motors
 int gripMotorPin=5;
 int slideMotorPin=4;
@@ -30,11 +33,14 @@ int linePos;
 //timers for 4Bar & bool for 4bar
 bool timerSet;
 bool raiseArm;
+int slideExtVal=9;
+int slideRecVal=9;
 long fourBarTimer1;
 long fourBarTimer2;
 //declares servo's
 Servo slideMotor;
 Servo gripMotor;
+Encoder slideEnc(slideEnc1, slideEnc2);
 // state machine variable 
 enum reactorStage {} reactorStage;
 #include <QTRSensors.h>
@@ -97,7 +103,7 @@ void set4BarTimers(){
 }
 //raises arm to horizontal position using PID
 void armRaise(){
-  if(digitalRead(armPotPin)>860){
+  if(digitalRead(armPotPin)>140){
   analogWrite(armMotorRaise, 150);
   analogWrite(armMotorLower, 0);
   }
@@ -108,7 +114,7 @@ void armRaise(){
 }
 //lowers arm to vertical position using PID
 void armLower(){
-  if(950>digitalRead(armPotPin)){
+  if(210>digitalRead(armPotPin)){
   analogWrite(armMotorRaise, 0);
   analogWrite(armMotorLower, 150);
   }
@@ -124,11 +130,21 @@ void armStop(){
 }
 //extend linear slide 
 void slideExtend(){
-  slideMotor.write(180);
+  if(slideEnc.read()>slideExtVal){
+  slideMotor.write(110);
+  }
+  else{
+    slideMotor.write(90);
+  }
 }
 //recline linear slide
 void slideRecline(){
-  slideMotor.write(0);
+  if(slideEnc.read()<slideRecVal){
+  slideMotor.write(70);
+  }
+  else{
+    slideMotor.write(90);
+  }
 }
 //close gripper to pick up rod
 void gripClose(){
@@ -172,21 +188,21 @@ qtra.read(sensorValues);
 //else{
 //  driveStop();
 //}
-armStop();
-gripOpen();
-delay(500);
-slideMotor.write(180);
-delay(500);
-gripClose();
-delay(500); 
-slideMotor.write(0);
-armRaise();
-delay(10000);
-armStop();
-//while(millis()<stepTimer1+10000){
-//  armRaise();
-//}
-armRaise();
+//armStop();
+//gripOpen();
+//delay(500);
+//slideMotor.write(180);
+//delay(500);
+//gripClose();
+//delay(500); 
+//slideMotor.write(0);
+//armRaise();
+//delay(10000);
+//armStop();
+////while(millis()<stepTimer1+10000){
+////  armRaise();
+////}
+//armRaise();
 //else if((stepTimer1-250)>millis()){
 //  lineFollowing();
 //  stopFollowing=1;
@@ -197,7 +213,9 @@ armRaise();
 //  setTimers();
 //  stopped=true;
 //}
-Serial.println(analogRead(11));
+armStop();
+slideMotor.write(90);
+Serial.println(slideEnc.read());
 //Serial.print(sensorValues[1]);
 //Serial.print(":");
 //Serial.print(sensorValues[2]);
